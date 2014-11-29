@@ -1,7 +1,7 @@
-DEFAULT_FILE_STORAGE = 'djangae.storage.BlobstoreStorage'
+DEFAULT_FILE_STORAGE = 'djangae.storage.blobstore.BlobstoreStorage'
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 FILE_UPLOAD_HANDLERS = (
-    'djangae.storage.BlobstoreFileUploadHandler',
+    'djangae.storage.blobstore.BlobstoreFileUploadHandler',
     'django.core.files.uploadhandler.MemoryFileUploadHandler',
 )
 

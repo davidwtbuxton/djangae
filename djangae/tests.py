@@ -36,7 +36,7 @@ from djangae.db import transaction
 from djangae.fields import ComputedCharField, ShardedCounterField, SetField, ListField, GenericRelationField
 from djangae.models import CounterShard
 from djangae.db.backends.appengine.dnf import parse_dnf
-from .storage import BlobstoreFileUploadHandler
+from .storage.blobstore import BlobstoreFileUploadHandler
 from .wsgi import DjangaeApplication
 
 try:
