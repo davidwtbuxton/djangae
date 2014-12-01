@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files import File
 from django.core.files.storage import Storage
+from django.utils.http import urlquote
 from google.appengine.api import app_identity
 
 
@@ -21,6 +22,7 @@ except ImportError:
 
 BUCKET_SETTINGS_KEY = 'CLOUDSTORAGE_BUCKET'
 DIR_SEP_KEY = 'CLOUDSTORAGE_DIRECTORY_SEPARATOR'
+DOWNLOAD_URL = 'https://storage-download.googleapis.com'
 
 
 class CloudStorage(Storage):
@@ -29,22 +31,30 @@ class CloudStorage(Storage):
     def _open(self, name, mode='rb'):
         # cloudstorage lib only does 'r' or 'w'.
         mode = mode.replace('b', '')
-
+        name = '/%s/%s' % (self._bucket, name)
         return gcs.open(name, mode=mode)
 
     def _save(self, name, content):
-        with gcs.open(name, mode='w') as fh:
-            fh.write(content)
+        dest = '/%s/%s' % (self._bucket, name)
+        with gcs.open(dest, mode='w') as fh:
+            fh.write(content.read())
 
         return name
 
     def delete(self, name):
+        name = '/%s/%s' % (self._bucket, name)
         return gcs.delete(name)
 
     def exists(self, name):
-        return bool(gcs.stat(name))
+        name = '/%s/%s' % (self._bucket, name)
+        try:
+            gcs.stat(name)
+            return True
+        except gcs.NotFoundError:
+            return False
 
     def listdir(self, path):
+        path = '/%s/%s' % (self._bucket, path)
         dirs_files = ([], [])
 
         for obj in gcs.listbucket(path, delimiter=self._delimiter):
@@ -53,9 +63,11 @@ class CloudStorage(Storage):
         return dirs_files
 
     def size(self, name):
+        name = '/%s/%s' % (self._bucket, name)
         return gcs.stat(name).st_size
 
     def created_time(self, name):
+        name = '/%s/%s' % (self._bucket, name)
         return gcs.stat(name).st_ctime
 
     def modified_time(self, name):
@@ -66,6 +78,13 @@ class CloudStorage(Storage):
 
     def get_available_name(self, name):
         return name
+
+    def url(self, name):
+        return '/'.join(DOWNLOAD_URL, self._bucket, urlquote(name))
+
+    @property
+    def _bucket(self):
+        return get_bucket()
 
 
 def get_bucket():
