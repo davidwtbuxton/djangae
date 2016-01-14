@@ -1,9 +1,10 @@
+import json
 from collections import OrderedDict
 
 # LIBRARIES
+from django.core import serializers
 from django.db import models
 from django.db.utils import IntegrityError
-from django.contrib.contenttypes.models import ContentType
 
 # DJANGAE
 from djangae.db import transaction
@@ -357,6 +358,24 @@ class IterableFieldTests(TestCase):
         self.assertRaises(TypeError, IterableFieldModel, list_field=1)
         self.assertRaises(TypeError, IterableFieldModel, set_field=1)
 
+    def test_list_field_serializes_to_json_list(self):
+        obj = IterableFieldModel(list_field=['foo', 'bar'])
+        data = serializers.serialize('json', [obj])
+        result = json.loads(data)
+
+        self.assertIsInstance(result[0]['fields']['list_field'], list)
+        self.assertEqual(result[0]['fields']['list_field'], ['foo', 'bar'])
+
+    def test_set_field_serializes_to_json_list(self):
+        obj = IterableFieldModel(set_field=set(['foo', 'bar']))
+        data = serializers.serialize('json', [obj])
+        result = json.loads(data)
+
+        # Using sorted so we have a stable order for tests.
+        self.assertIsInstance(result[0]['fields']['set_field'], list)
+        self.assertEqual(sorted(result[0]['fields']['set_field']), ['bar', 'foo'])
+
+
 class InstanceListFieldTests(TestCase):
 
     def test_deserialization(self):
@@ -504,6 +523,18 @@ class InstanceListFieldTests(TestCase):
         main.save()
         self.assertItemsEqual([other, other2, other2], main.related_list.filter(name="one"))
 
+    def test_related_list_field_serializes_to_json_list(self):
+        obj = ISModel.objects.create()
+        foo = ISOther.objects.create(name='foo')
+        bar = ISOther.objects.create(name='bar')
+        obj.related_list.add(foo, bar)
+        obj.save()
+
+        data = serializers.serialize('json', [obj])
+        result = json.loads(data)
+
+        self.assertIsInstance(result[0]['fields']['related_list'], list)
+        self.assertEqual(result[0]['fields']['related_list'], [foo.pk, bar.pk])
 
 
 class InstanceSetFieldTests(TestCase):
@@ -606,6 +637,22 @@ class InstanceSetFieldTests(TestCase):
 
         self.assertItemsEqual([obj], ISModel.objects.filter(related_things__isnull=True))
         self.assertItemsEqual([obj], ISModel.objects.filter(related_things_ids__isnull=True))
+
+    def test_related_set_field_serializes_to_json_list(self):
+        obj = ISModel.objects.create()
+        foo = ISOther.objects.create(name='foo')
+        bar = ISOther.objects.create(name='bar')
+        obj.related_things.add(foo, bar)
+        obj.save()
+
+        data = serializers.serialize('json', [obj])
+        result = json.loads(data)
+
+        self.assertIsInstance(result[0]['fields']['related_things'], list)
+        self.assertEqual(
+            sorted(result[0]['fields']['related_things']),
+            [foo.pk, bar.pk],
+        )
 
 
 class TestGenericRelationField(TestCase):
