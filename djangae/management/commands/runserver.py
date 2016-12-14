@@ -5,10 +5,6 @@ from datetime import datetime
 from django.conf import settings
 from django.core.management.commands import runserver
 from google.appengine.tools.devappserver2 import shutdown
-from google.appengine.tools.sdk_update_checker import (
-    GetVersionObject,
-    _VersionList
-)
 
 
 DJANGAE_RUNSERVER_IGNORED_FILES_REGEXES = getattr(settings, "DJANGAE_RUNSERVER_IGNORED_FILES_REGEXES", [])
@@ -203,9 +199,7 @@ class Command(runserver.Command):
             setattr(sandbox._OPTIONS, param, value)
 
         # External port is a new flag introduced in 1.9.19
-        current_version = _VersionList(GetVersionObject()['release'])
-        if current_version >= _VersionList('1.9.19'):
-            sandbox._OPTIONS.external_port = None
+        sandbox._OPTIONS.external_port = None
 
         # Apply equivalent options for Django args
         sandbox._OPTIONS.automatic_restart = self.use_reloader

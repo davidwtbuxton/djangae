@@ -69,12 +69,11 @@ def _create_dispatcher(configuration, options):
     from google.appengine.tools.devappserver2.devappserver2 import (
         DevelopmentServer, _LOG_LEVEL_TO_RUNTIME_CONSTANT
     )
-    from google.appengine.tools.sdk_update_checker import GetVersionObject, \
-                                                          _VersionList
 
     if hasattr(_create_dispatcher, "singleton"):
         return _create_dispatcher.singleton
 
+    # Assumes you are using SDK 1.9.22 or later.
     dispatcher_args = [
         configuration,
         options.host,
@@ -84,6 +83,7 @@ def _create_dispatcher(configuration, options):
         DevelopmentServer._create_php_config(options),
         DevelopmentServer._create_python_config(options),
         DevelopmentServer._create_java_config(options),
+        None,
         DevelopmentServer._create_cloud_sql_config(options),
         DevelopmentServer._create_vm_config(options),
         DevelopmentServer._create_module_to_setting(options.max_module_instances,
@@ -92,16 +92,9 @@ def _create_dispatcher(configuration, options):
         options.automatic_restart,
         options.allow_skipped_files,
         DevelopmentServer._create_module_to_setting(options.threadsafe_override,
-                                       configuration, '--threadsafe_override')
+                                       configuration, '--threadsafe_override'),
+        options.external_port,
     ]
-
-    # External port is a new flag introduced in 1.9.19
-    current_version = _VersionList(GetVersionObject()['release'])
-    if current_version >= _VersionList('1.9.19'):
-        dispatcher_args.append(options.external_port)
-
-    if current_version >= _VersionList('1.9.22'):
-        dispatcher_args.insert(8, None) # Custom config setting
 
     _create_dispatcher.singleton = dispatcher.Dispatcher(*dispatcher_args)
 
