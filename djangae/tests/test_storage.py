@@ -15,7 +15,7 @@ from google.appengine.api.images import TransformationError, LargeImageError
 # DJANGAE
 from djangae.contrib import sleuth
 from djangae.db import transaction
-from djangae.storage import BlobstoreStorage, CloudStorage, has_cloudstorage
+from djangae import storage
 from djangae.test import TestCase
 
 
@@ -33,22 +33,22 @@ class ModelWithTextFile(models.Model):
     text_file = models.FileField()
 
 
-@skipIf(not has_cloudstorage, "Cloud Storage not available")
+@skipIf(not storage.has_cloudstorage, "Cloud Storage not available")
 class CloudStorageTests(TestCase):
 
     @override_settings(CLOUD_STORAGE_BUCKET='test_bucket')
     def test_basic_actions(self):
-        storage = CloudStorage()
+        storage_obj = storage.CloudStorage()
         name = u'tmp.ąćęłńóśźż.马铃薯.zip'
 
         f = ContentFile('content', name='my_file')
-        filename = storage.save(name, f)
+        filename = storage_obj.save(name, f)
         self.assertIsInstance(filename, basestring)
         self.assertTrue(filename.endswith(name))
 
-        self.assertTrue(storage.exists(filename))
-        self.assertEqual(storage.size(filename), len('content'))
-        url = storage.url(filename)
+        self.assertTrue(storage_obj.exists(filename))
+        self.assertEqual(storage_obj.size(filename), len('content'))
+        url = storage_obj.url(filename)
         self.assertIsInstance(url, basestring)
         self.assertNotEqual(url, '')
 
@@ -59,51 +59,51 @@ class CloudStorageTests(TestCase):
         self.assertEqual(response.status_code, httplib.OK)
         self.assertEqual(response.content, 'content')
 
-        f = storage.open(filename)
+        f = storage_obj.open(filename)
         self.assertIsInstance(f, File)
         self.assertEqual(f.read(), 'content')
 
         # Delete it
-        storage.delete(filename)
-        self.assertFalse(storage.exists(filename))
+        storage_obj.delete(filename)
+        self.assertFalse(storage_obj.exists(filename))
 
     @override_settings(CLOUD_STORAGE_BUCKET='test_bucket')
     def test_dotslash_prefix(self):
-        storage = CloudStorage()
+        storage_obj = storage.CloudStorage()
         name = './my_file'
         f = ContentFile('content')
-        filename = storage.save(name, f)
+        filename = storage_obj.save(name, f)
         self.assertEqual(filename, name.lstrip("./"))
 
     @override_settings(CLOUD_STORAGE_BUCKET='test_bucket')
     def test_supports_nameless_files(self):
-        storage = CloudStorage()
+        storage_obj = storage.CloudStorage()
         f2 = ContentFile('nameless-content')
-        storage.save('tmp2', f2)
+        storage_obj.save('tmp2', f2)
 
     @override_settings(CLOUD_STORAGE_BUCKET='test_bucket')
     def test_new_objects_get_the_default_acl(self):
-        storage = CloudStorage()
+        storage_obj = storage.CloudStorage()
         filename = 'example.txt'
         fileobj = ContentFile('content', name=filename)
 
         with sleuth.watch('cloudstorage.open') as open_func:
-            storage.save(filename, fileobj)
+            storage_obj.save(filename, fileobj)
 
-        self.assertTrue(storage.exists(filename))
+        self.assertTrue(storage_obj.exists(filename))
         # There's no x-goog-acl argument, so default perms are applied.
         self.assertEqual(open_func.calls[0].kwargs['options'], {})
 
     @override_settings(CLOUD_STORAGE_BUCKET='test_bucket')
     def test_new_objects_with_an_explicit_acl(self):
-        storage = CloudStorage(google_acl='public-read')
+        storage_obj = storage.CloudStorage(google_acl='public-read')
         filename = 'example.txt'
         fileobj = ContentFile('content', name=filename)
 
         with sleuth.watch('cloudstorage.open') as open_func:
-            storage.save(filename, fileobj)
+            storage_obj.save(filename, fileobj)
 
-        self.assertTrue(storage.exists(filename))
+        self.assertTrue(storage_obj.exists(filename))
         self.assertEqual(
             open_func.calls[0].kwargs['options'],
             {'x-goog-acl': 'public-read'},
@@ -153,19 +153,19 @@ class CloudStorageTests(TestCase):
 class BlobstoreStorageTests(TestCase):
     def test_basic_actions(self):
 
-        storage = BlobstoreStorage()
+        storage_obj = storage.BlobstoreStorage()
 
         # Save a new file
         f = ContentFile('content', name='my_file')
-        filename = storage.save('tmp', f)
+        filename = storage_obj.save('tmp', f)
 
         self.assertIsInstance(filename, basestring)
         self.assertTrue(filename.endswith('tmp'))
 
         # Check .exists(), .size() and .url()
-        self.assertTrue(storage.exists(filename))
-        self.assertEqual(storage.size(filename), len('content'))
-        url = storage.url(filename)
+        self.assertTrue(storage_obj.exists(filename))
+        self.assertEqual(storage_obj.size(filename), len('content'))
+        url = storage_obj.url(filename)
         self.assertIsInstance(url, basestring)
         self.assertNotEqual(url, '')
 
@@ -179,25 +179,25 @@ class BlobstoreStorageTests(TestCase):
 
         # Open it, read it
         # NOTE: Blobstore doesn’t support updating existing files.
-        f = storage.open(filename)
+        f = storage_obj.open(filename)
         self.assertIsInstance(f, File)
         self.assertEqual(f.read(), 'content')
 
         # Delete it
-        storage.delete(filename)
-        self.assertFalse(storage.exists(filename))
+        storage_obj.delete(filename)
+        self.assertFalse(storage_obj.exists(filename))
 
     def test_supports_nameless_files(self):
-        storage = BlobstoreStorage()
+        storage_obj = storage.BlobstoreStorage()
         f2 = ContentFile('nameless-content')
-        storage.save('tmp2', f2)
+        storage_obj.save('tmp2', f2)
 
     def test_transformation_error(self):
-        storage = BlobstoreStorage()
+        storage_obj = storage.BlobstoreStorage()
         with sleuth.detonate('djangae.storage.get_serving_url', TransformationError):
-            self.assertEqual('thing', storage.url('thing'))
+            self.assertEqual('thing', storage_obj.url('thing'))
 
     def test_large_image_error(self):
-        storage = BlobstoreStorage()
+        storage_obj = storage.BlobstoreStorage()
         with sleuth.detonate('djangae.storage.get_serving_url', LargeImageError):
-            self.assertEqual('thing', storage.url('thing'))
+            self.assertEqual('thing', storage_obj.url('thing'))

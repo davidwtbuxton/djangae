@@ -31,16 +31,7 @@ from google.appengine.api.images import (
     TransformationError,
     LargeImageError,
 )
-from google.appengine.ext.blobstore import (
-    BlobInfo,
-    BlobKey,
-    delete,
-    BLOB_KEY_HEADER,
-    BLOB_RANGE_HEADER,
-    BlobReader,
-    create_gs_key,
-    create_upload_url,
-)
+from google.appengine.ext import blobstore
 
 try:
     import cloudstorage
@@ -94,7 +85,7 @@ def _get_or_create_cached_blob_key_and_info(blob_key_or_info):
     else:
         info = cloudstorage.stat(blob_key_or_info)
         info.size = info.st_size
-        blob_key = create_gs_key('/gs{0}'.format(blob_key_or_info))
+        blob_key = blobstore.create_gs_key('/gs{0}'.format(blob_key_or_info))
         _add_to_cache(blob_key_or_info, blob_key, info)
     return (blob_key, info)
 
@@ -107,13 +98,13 @@ def serve_file(request, blob_key_or_info, as_download=False, content_type=None, 
         https://cloud.google.com/appengine/docs/python/blobstore/#Python_Using_the_Blobstore_API_with_Google_Cloud_Storage
     """
 
-    if isinstance(blob_key_or_info, BlobKey):
-        info = BlobInfo.get(blob_key_or_info)
+    if isinstance(blob_key_or_info, blobstore.BlobKey):
+        info = blobstore.BlobInfo.get(blob_key_or_info)
         blob_key = blob_key_or_info
     elif isinstance(blob_key_or_info, basestring):
-        info = BlobInfo.get(BlobKey(blob_key_or_info))
-        blob_key = BlobKey(blob_key_or_info)
-    elif isinstance(blob_key_or_info, BlobInfo):
+        info = blobstore.BlobInfo.get(blobstore.BlobKey(blob_key_or_info))
+        blob_key = blobstore.BlobKey(blob_key_or_info)
+    elif isinstance(blob_key_or_info, blobstore.BlobInfo):
         info = blob_key_or_info
         blob_key = info.key()
     else:
@@ -127,7 +118,7 @@ def serve_file(request, blob_key_or_info, as_download=False, content_type=None, 
             raise ImportError("To serve a Cloud Storage file you need to install cloudstorage")
 
     response = HttpResponse(content_type=content_type or info.content_type)
-    response[BLOB_KEY_HEADER] = str(blob_key)
+    response[blobstore.BLOB_KEY_HEADER] = str(blob_key)
     response['Accept-Ranges'] = 'bytes'
     http_range = request.META.get('HTTP_RANGE')
 
@@ -140,7 +131,7 @@ def serve_file(request, blob_key_or_info, as_download=False, content_type=None, 
         )
 
     if http_range is not None:
-        response[BLOB_RANGE_HEADER] = http_range
+        response[blobstore.BLOB_RANGE_HEADER] = http_range
 
     if as_download:
         response['Content-Disposition'] = smart_str(
@@ -220,9 +211,9 @@ class BlobstoreStorage(Storage, BlobstoreUploadMixin):
             raise ValueError("The App Engine storage backend only supports "
                              "BlobstoreFile instances or File instances.")
 
-        if isinstance(data, (BlobInfo, BlobKey)):
+        if isinstance(data, (blobstore.BlobInfo, blobstore.BlobKey)):
             # We change the file name to the BlobKey's str() value.
-            if isinstance(data, BlobInfo):
+            if isinstance(data, blobstore.BlobInfo):
                 data = data.key()
             return '%s/%s' % (data, name.lstrip('/'))
         else:
@@ -232,7 +223,7 @@ class BlobstoreStorage(Storage, BlobstoreUploadMixin):
                              "handler.")
 
     def delete(self, name):
-        delete(self._get_key(name))
+        blobstore.delete(self._get_key(name))
 
     def exists(self, name):
         return self._get_blobinfo(name) is not None
@@ -268,16 +259,17 @@ class BlobstoreStorage(Storage, BlobstoreUploadMixin):
         return ret
 
     def _get_key(self, name):
-        return BlobKey(name.split('/', 1)[0])
+        return blobstore.BlobKey(name.split('/', 1)[0])
 
     def _get_blobinfo(self, name):
-        return BlobInfo.get(self._get_key(name))
+        return blobstore.BlobInfo.get(self._get_key(name))
 
     def _create_upload_url(self):
         # Creating the upload URL can't be atomic, otherwise the session
         # key will not be consistent when uploading the file
         with transaction.non_atomic():
-            return create_upload_url(reverse('djangae_internal_upload_handler'))
+            url = reverse('djangae_internal_upload_handler')
+            return blobstore.create_upload_url(url)
 
 
 class CloudStorage(Storage, BlobstoreUploadMixin):
@@ -394,12 +386,11 @@ class CloudStorage(Storage, BlobstoreUploadMixin):
             return info.st_size
 
     def _create_upload_url(self):
-        return create_upload_url(
-            reverse('djangae_internal_upload_handler'),
-            gs_bucket_name=self.bucket_name
-        )
+        url = reverse('djangae_internal_upload_handler')
+        return blobstore.create_upload_url(url, gs_bucket_name=self.bucket_name)
 
-class UniversalNewLineBlobReader(BlobReader):
+
+class UniversalNewLineBlobReader(blobstore.BlobReader):
     def readline(self, size=-1):
         limit_size = size > -1
 
@@ -466,7 +457,7 @@ class BlobstoreFileUploadHandler(FileUploadHandler):
             self.blobkey = content_type_extra.get('blob-key')
 
         if self.blobkey:
-            self.blobkey = BlobKey(self.blobkey)
+            self.blobkey = blobstore.BlobKey(self.blobkey)
             raise StopFutureHandlers()
         else:
             return super(BlobstoreFileUploadHandler, self).new_file(field_name, file_name, content_type, content_length, charset)
@@ -486,7 +477,7 @@ class BlobstoreFileUploadHandler(FileUploadHandler):
             return
 
         return BlobstoreUploadedFile(
-            blobinfo=BlobInfo(self.blobkey),
+            blobinfo=blobstore.BlobInfo(self.blobkey),
             charset=self.charset)
 
 
