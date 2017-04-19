@@ -1,13 +1,10 @@
 # coding: utf-8
-import urllib
+import email
+import email.message
 import mimetypes
 import re
 import threading
-
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
+import urllib
 
 from django.conf import settings
 from django.core.exceptions import SuspiciousFileOperation
@@ -20,6 +17,7 @@ from django.core.files.uploadhandler import FileUploadHandler, \
 from django.http import HttpResponse
 from django.utils.encoding import smart_str, force_unicode
 from django.test.client import encode_multipart, MULTIPART_CONTENT, BOUNDARY
+from djangae import environment
 from djangae.db import transaction
 
 from google.appengine.api import urlfetch
@@ -505,3 +503,42 @@ class BlobstoreUploadedFile(UploadedFile):
 
     def multiple_chunks(self, chunk_size=1024 * 128):
         return True
+
+
+def parse_upload_info(fileobj, transfer_encoding=''):
+    """Parse the contents of an uploaded file created using
+    blobstore.create_upload_url().
+
+    Returns an email.message.Message instance.
+    """
+    data = fileobj.read()
+
+    if (not transfer_encoding) and environment.is_production_environment():
+        # Need the correct encoding header to make the other headers decode
+        # correctly. Else multi-line headers will mess up things.
+        transfer_encoding = 'quoted-printable'
+
+    if transfer_encoding:
+        message = email.message.Message()
+        message.add_header('content-transfer-encoding', transfer_encoding)
+        message.set_payload(data)
+        data = message.get_payload(decode=True)
+
+    message = email.message_from_string(data)
+
+    return message
+
+
+def parse_gs_object_name(fileobj, transfer_encoding=''):
+    """Parse the gs_object_name header value from an uploaded file.
+
+    Returns a string like '/<bucket>/<object>' or None.
+    """
+    message = parse_upload_info(fileobj, transfer_encoding=transfer_encoding)
+    object_name = message[blobstore.CLOUD_STORAGE_OBJECT_HEADER]
+
+    if object_name is not None:
+        assert object_name.startswith('/gs/')
+        object_name = object_name[3:]
+
+    return object_name
