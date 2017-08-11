@@ -559,9 +559,8 @@ class SelectCommand(object):
                     ])
                 ])
             return result
-        except:
+        except Exception:
             # We never want this to cause things to die
-            logger.exception("Unable to translate query to string")
             return "QUERY TRANSLATION ERROR"
 
     def __repr__(self):
@@ -788,9 +787,8 @@ class InsertCommand(object):
                 result += u"(" + u", ".join([unicode(entity[x]) for x in keys]) + u")"
 
             return result
-        except:
+        except Exception:
             # We never want this to cause things to die
-            logger.info("InsertCommand is unable to translate query to string")
             return u"QUERY TRANSLATION ERROR"
 
     def __repr__(self):
