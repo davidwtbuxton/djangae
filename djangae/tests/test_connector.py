@@ -645,7 +645,7 @@ class BackendTests(TestCase):
     def test_ordering_by_scatter_property(self):
         try:
             list(TestFruit.objects.order_by("__scatter__"))
-        except:
+        except Exception:
             logging.exception("Error sorting on __scatter__")
             self.fail("Unable to sort on __scatter__ property like we should")
 

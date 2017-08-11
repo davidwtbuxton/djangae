@@ -107,7 +107,7 @@ class TransactionTests(TestCase):
 
             try:
                 return do_stuff
-            except:
+            except Exception:
                 return
 
         with transaction.atomic():

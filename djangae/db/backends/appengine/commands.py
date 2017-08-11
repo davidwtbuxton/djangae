@@ -744,7 +744,7 @@ class InsertCommand(object):
 
             try:
                 return txn()
-            except:
+            except Exception:
                 # There are 3 possible reasons why we've ended up here:
                 # 1. The datastore.Put() failed, but note that because it's a transaction, the
                 #    exception isn't raised until the END of the transaction block.
@@ -1048,7 +1048,7 @@ class UpdateCommand(object):
                         self.namespace,
                         skip_memcache=True,
                     )
-                except:
+                except Exception:
                     # We ignore the exception because raising will rollback the transaction causing
                     # an inconsistent state
                     logger.exception("Unable to update the context cache")
@@ -1059,7 +1059,7 @@ class UpdateCommand(object):
 
         try:
             return txn()
-        except:
+        except Exception:
             if rollback_markers[0]:
                 constraints.update_identifiers(markers_to_release, markers_to_acquire, key)
             raise

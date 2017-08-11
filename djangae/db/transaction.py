@@ -75,7 +75,7 @@ class ContextDecorator(object):
             self.__class__._do_enter(self._push_state(), decorator_args)
             try:
                 return self.func(*_args, **_kwargs)
-            except:
+            except Exception:
                 exception = True
                 raise
             finally:
