@@ -177,7 +177,7 @@ class Command(runserver.Command):
         sdk_path = _find_sdk_from_python_path()
 
         from google.appengine.tools.devappserver2 import devappserver2
-        from google.appengine.tools.devappserver2 import python_runtime
+        from google.appengine.tools.devappserver2.python import instance_factory
 
         from djangae import sandbox
 
@@ -378,8 +378,8 @@ class Command(runserver.Command):
 
         module.logging.log = logging_wrapper(module.logging.log)
 
-        python_runtime._RUNTIME_PATH = os.path.join(sdk_path, '_python_runtime.py')
-        python_runtime._RUNTIME_ARGS = [sys.executable, python_runtime._RUNTIME_PATH]
+        instance_factory._RUNTIME_PATH = os.path.join(sdk_path, '_python_runtime.py')
+        instance_factory._RUNTIME_ARGS = [sys.executable, instance_factory._RUNTIME_PATH]
 
         dev_server = NoConfigDevServer()
 

@@ -1,9 +1,4 @@
 try:
-    from google.appengine.tools.devappserver2.python import sandbox
-except ImportError:
-    from google.appengine.tools.devappserver2.python.runtime import sandbox
-
-try:
     from google.appengine.tools.devappserver2.python import runtime
 except ImportError:
     from google.appengine.tools.devappserver2.python.runtime import runtime

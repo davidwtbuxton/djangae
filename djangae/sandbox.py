@@ -212,9 +212,11 @@ def _local(devappserver2=None, configuration=None, options=None, wsgi_request_in
     os.environ['SERVER_PORT'] = str(port)
     os.environ['DEFAULT_VERSION_HOSTNAME'] = '%s:%s' % (os.environ['SERVER_NAME'], os.environ['SERVER_PORT'])
 
-    devappserver2._setup_environ(configuration.app_id)
+    from google.appengine.tools.devappserver2.util import setup_environ
+    setup_environ(configuration.app_id)
 
     from google.appengine.tools.devappserver2 import api_server
+    from google.appengine.tools.devappserver2 import stub_util
     from google.appengine.tools.sdk_update_checker import GetVersionObject, _VersionList
 
     if hasattr(api_server, "get_storage_path"):
@@ -274,7 +276,7 @@ def _local(devappserver2=None, configuration=None, options=None, wsgi_request_in
     try:
         yield
     finally:
-        api_server.cleanup_stubs()
+        # stub_util.cleanup_stubs()
         os.environ = original_environ
         stop_blobstore_service()
 
